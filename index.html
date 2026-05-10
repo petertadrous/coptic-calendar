@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coptic Fasts & Feasts Calendar</title>
+<style>
+  body { font-family: -apple-system, system-ui, sans-serif; max-width: 640px; margin: 3rem auto; padding: 0 1rem; line-height: 1.6; color: #222; }
+  h1 { margin-bottom: 0.25rem; }
+  code { background: #f4f4f4; padding: 0.15em 0.4em; border-radius: 4px; font-size: 0.9em; }
+  .url { display: block; word-break: break-all; padding: 1rem; background: #f4f4f4; border-radius: 6px; margin: 1rem 0; }
+  .legend span { display: inline-block; margin-right: 1rem; }
+</style>
+</head>
+<body>
+<h1>Coptic Fasts &amp; Feasts</h1>
+<p>An auto-updating Coptic Orthodox liturgical calendar with every event labeled <code>FAST</code> or <code>FEAST</code>, so a glance at the title tells you whether today is a fasting day.</p>
+
+<p class="legend">
+  <span>🍃 <code>FAST</code> — vegan abstinence period</span>
+  <span>✨ <code>FEAST</code> — celebration / fast suspended</span>
+</p>
+
+<h2>Subscribe</h2>
+<p>Add this URL to Google Calendar, Apple Calendar, or any iCal-compatible app:</p>
+<code class="url">https://coptic.petertadrous.com/coptic.ics</code>
+
+<p><strong>Google Calendar:</strong> Settings → Add calendar → From URL → paste above.<br>
+<strong>Apple Calendar:</strong> File → New Calendar Subscription → paste above.</p>
+
+<h2>How it works</h2>
+<p>Every Sunday, GitHub Actions fetches the upstream calendar published by the
+<a href="https://deacons.suscopts.org/calendar/">Society of St. Stephen Coptic Orthodox Deacons</a>
+(valid through 2100), rewrites event titles with FAST/FEAST prefixes, and expands
+single-day "...Begins" markers into full multi-day fast periods. Set once, runs forever.</p>
+
+<p>Source: <a href="https://github.com/petertadrous/coptic-calendar">github.com/petertadrous/coptic-calendar</a></p>
+</body>
+</html>

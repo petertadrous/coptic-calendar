@@ -1,0 +1,67 @@
+name: Build Coptic Calendar
+
+on:
+  schedule:
+    # Weekly on Sunday at 06:00 UTC. The source file rarely changes, but a weekly
+    # rebuild means any upstream fixes propagate without manual intervention.
+    - cron: "0 6 * * 0"
+  workflow_dispatch:  # allow manual runs from the Actions tab
+  push:
+    branches: [main]
+    paths:
+      - "transform.py"
+      - ".github/workflows/build.yml"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build coptic.ics
+        run: python3 transform.py
+
+      - name: Verify output is non-trivial
+        run: |
+          test -s coptic.ics
+          # At least 1000 events expected (50+ years × ~25 events/year)
+          count=$(grep -c '^BEGIN:VEVENT' coptic.ics || true)
+          echo "Event count: $count"
+          test "$count" -gt 1000
+
+      - name: Stage site
+        run: |
+          mkdir -p _site
+          cp coptic.ics _site/coptic.ics
+          cp index.html _site/index.html 2>/dev/null || true
+          cp CNAME _site/CNAME 2>/dev/null || true
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
