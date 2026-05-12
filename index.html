@@ -113,6 +113,65 @@
     margin: 1rem 0;
   }
 
+  /* Today-status hero card */
+  .today {
+    margin: 2rem 0 1rem;
+    padding: 1.5rem 1.5rem 1.35rem;
+    transition: background-color .25s, border-color .25s;
+  }
+  .today[hidden] { display: none; }
+  .today .today-label {
+    font-size: .78rem;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+    margin: 0 0 .35rem;
+  }
+  .today .today-main {
+    font-size: clamp(1.15rem, 2vw + .6rem, 1.55rem);
+    line-height: 1.3;
+    margin: 0;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--fg);
+  }
+  .today .today-emoji {
+    font-size: 1.1em;
+    margin-right: .35rem;
+  }
+  .today .today-next {
+    margin: .75rem 0 0;
+    font-size: .92rem;
+    color: var(--fg-muted);
+  }
+  .today .today-next b { color: var(--fg); font-weight: 600; }
+
+  /* Per-status tint palettes (light) */
+  .today[data-status="fast"] {
+    --status-bg: #eef3e6;
+    --status-border: #c7d4ad;
+    background: var(--status-bg);
+    border-color: var(--status-border);
+  }
+  .today[data-status="feast"] {
+    --status-bg: #fbf1d8;
+    --status-border: #e9d39a;
+    background: var(--status-bg);
+    border-color: var(--status-border);
+  }
+  @media (prefers-color-scheme: dark) {
+    .today[data-status="fast"] {
+      --status-bg: #1f2820;
+      --status-border: #3a4a35;
+    }
+    .today[data-status="feast"] {
+      --status-bg: #2a2418;
+      --status-border: #4d4326;
+    }
+  }
+  .today[data-status="error"] .today-main { color: var(--fg-muted); font-weight: 500; }
+
   .url-row {
     display: flex;
     align-items: stretch;
@@ -190,6 +249,12 @@
   </ul>
 </header>
 
+<section class="card today" data-status="loading" aria-live="polite" aria-atomic="true">
+  <p class="today-label" id="today-label">Today</p>
+  <p class="today-main" id="today-main">Loading today's status…</p>
+  <p class="today-next" id="today-next" hidden></p>
+</section>
+
 <h2>Subscribe</h2>
 <div class="card">
   <p style="margin-top:0">Add this URL to Google Calendar, Apple Calendar, or any iCal-compatible app:</p>
@@ -233,6 +298,135 @@ single-day “…Begins” markers into full multi-day fast periods. Set once, r
       btn.dataset.copied = '1';
       setTimeout(() => { btn.textContent = orig; delete btn.dataset.copied; }, 1600);
     });
+  })();
+
+  // Today-status: fetch coptic.ics, classify today, render the hero card.
+  (() => {
+    const card = document.querySelector('.today');
+    const labelEl = document.getElementById('today-label');
+    const mainEl  = document.getElementById('today-main');
+    const nextEl  = document.getElementById('today-next');
+
+    const pad = n => String(n).padStart(2, '0');
+    function toYMD(d) { return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}`; }
+    function parseYMD(s) {
+      return new Date(+s.slice(0,4), +s.slice(4,6) - 1, +s.slice(6,8));
+    }
+    function daysBetween(a, b) {
+      return Math.round((b - a) / 86400000);
+    }
+    function fmtLong(d) {
+      return d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+    }
+
+    function parseICS(text) {
+      const events = [];
+      const re = /BEGIN:VEVENT([\s\S]*?)END:VEVENT/g;
+      let m;
+      while ((m = re.exec(text)) !== null) {
+        const block = m[1];
+        const s = /DTSTART;VALUE=DATE:(\d{8})/.exec(block);
+        const e = /DTEND;VALUE=DATE:(\d{8})/.exec(block);
+        const sum = /SUMMARY:(.+)/.exec(block);
+        if (!s || !sum) continue;
+        events.push({
+          start: s[1],
+          end: e ? e[1] : s[1],   // single-day events with no DTEND treat start==end inclusively
+          summary: sum[1].trim().replace(/\r$/, ''),
+        });
+      }
+      return events;
+    }
+
+    function classify(summary) {
+      if (summary.startsWith('✨ FEAST:')) return 'feast';
+      if (summary.startsWith('🍃 FAST:'))  return 'fast';
+      if (summary.startsWith('NOTE:'))     return 'note';
+      return 'other';
+    }
+    function cleanLabel(summary) {
+      return summary.replace(/^(✨ FEAST:|🍃 FAST:|NOTE:)\s*/, '');
+    }
+
+    function findToday(events, todayYMD) {
+      const matches = events.filter(ev => {
+        // [start, end) for ranges; for single-day events with no DTEND, end===start, treat as that one day
+        if (ev.end === ev.start) return ev.start === todayYMD;
+        return ev.start <= todayYMD && todayYMD < ev.end;
+      });
+      const feasts = matches.filter(ev => classify(ev.summary) === 'feast');
+      const fasts  = matches.filter(ev => classify(ev.summary) === 'fast');
+      // Feast suspends fast.
+      if (feasts.length) return { status: 'feast', event: feasts[0] };
+      if (fasts.length)  return { status: 'fast',  event: fasts[0] };
+      return { status: 'normal', event: null };
+    }
+
+    function findNext(events, todayYMD) {
+      const future = events
+        .filter(ev => ev.start > todayYMD)
+        .filter(ev => {
+          const k = classify(ev.summary);
+          return k === 'fast' || k === 'feast';
+        })
+        .sort((a, b) => a.start.localeCompare(b.start));
+      return future[0] || null;
+    }
+
+    function render(today, classification, nextEvent) {
+      const todayLong = fmtLong(today);
+      labelEl.textContent = `Today · ${todayLong}`;
+
+      if (classification.status === 'feast' || classification.status === 'fast') {
+        const ev = classification.event;
+        const emoji = classification.status === 'feast' ? '✨' : '🍃';
+        const verb  = classification.status === 'feast' ? 'Feast' : 'Fast';
+        mainEl.innerHTML = `<span class="today-emoji">${emoji}</span>${verb}: ${escapeHTML(cleanLabel(ev.summary))}`;
+        card.dataset.status = classification.status;
+      } else {
+        mainEl.innerHTML = `<span class="today-emoji">🗓</span>No fast or feast today`;
+        card.dataset.status = 'normal';
+      }
+
+      if (nextEvent) {
+        const days = daysBetween(today, parseYMD(nextEvent.start));
+        const when = days === 1 ? 'tomorrow' : `in ${days} days`;
+        const kind = classify(nextEvent.summary);
+        const e2   = kind === 'feast' ? '✨' : '🍃';
+        nextEl.innerHTML = `Next: <span class="today-emoji">${e2}</span><b>${escapeHTML(cleanLabel(nextEvent.summary))}</b> — ${when}`;
+        nextEl.hidden = false;
+      } else {
+        nextEl.hidden = true;
+      }
+    }
+
+    function escapeHTML(s) {
+      return s.replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+    }
+
+    function showError() {
+      card.dataset.status = 'error';
+      labelEl.textContent = 'Today';
+      mainEl.textContent  = "Couldn't load today's status. The full calendar is below.";
+      nextEl.hidden = true;
+    }
+
+    // Optional override for testing: ?today=YYYYMMDD
+    const params = new URLSearchParams(location.search);
+    const override = params.get('today');
+    const today = override && /^\d{8}$/.test(override) ? parseYMD(override) : new Date();
+    const todayYMD = toYMD(today);
+
+    fetch('coptic.ics', { cache: 'no-cache' })
+      .then(r => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then(text => {
+        const events = parseICS(text);
+        if (!events.length) throw new Error('no events parsed');
+        const classification = findToday(events, todayYMD);
+        const nextEvent = findNext(events, todayYMD);
+        render(today, classification, nextEvent);
+      })
+      .catch(showError);
   })();
 </script>
 </body>
