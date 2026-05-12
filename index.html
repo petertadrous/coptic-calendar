@@ -3,37 +3,237 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#fdfaf5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#15161a" media="(prefers-color-scheme: dark)">
 <title>Coptic Fasts & Feasts Calendar</title>
 <style>
-  body { font-family: -apple-system, system-ui, sans-serif; max-width: 640px; margin: 3rem auto; padding: 0 1rem; line-height: 1.6; color: #222; }
-  h1 { margin-bottom: 0.25rem; }
-  code { background: #f4f4f4; padding: 0.15em 0.4em; border-radius: 4px; font-size: 0.9em; }
-  .url { display: block; word-break: break-all; padding: 1rem; background: #f4f4f4; border-radius: 6px; margin: 1rem 0; }
-  .legend span { display: inline-block; margin-right: 1rem; }
+  :root {
+    --bg: #fdfaf5;
+    --bg-soft: #f3ede1;
+    --bg-card: #ffffff;
+    --fg: #1f2024;
+    --fg-muted: #5b5d66;
+    --accent: #8a3a2a;
+    --accent-fg: #ffffff;
+    --border: #e6dfd0;
+    --code-bg: #f3ede1;
+    --shadow: 0 1px 2px rgba(0,0,0,.04), 0 8px 24px rgba(0,0,0,.06);
+    --radius: 12px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #15161a;
+      --bg-soft: #1d1f24;
+      --bg-card: #1b1d22;
+      --fg: #ececef;
+      --fg-muted: #a0a3ad;
+      --accent: #e8a17a;
+      --accent-fg: #15161a;
+      --border: #2a2d34;
+      --code-bg: #25282f;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 3rem 1.25rem 4rem;
+    line-height: 1.65;
+    color: var(--fg);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  header { margin-bottom: 2.5rem; }
+  h1 {
+    font-size: clamp(1.9rem, 4vw + 1rem, 2.6rem);
+    line-height: 1.15;
+    margin: 0 0 .35rem;
+    letter-spacing: -0.02em;
+  }
+  .tagline {
+    color: var(--fg-muted);
+    font-size: 1.05rem;
+    margin: 0;
+  }
+
+  h2 {
+    font-size: 1.15rem;
+    margin: 2.25rem 0 .75rem;
+    letter-spacing: -0.01em;
+  }
+
+  p { margin: .75rem 0; }
+  a { color: var(--accent); text-decoration: none; border-bottom: 1px solid color-mix(in srgb, var(--accent) 55%, transparent); transition: border-color .15s; }
+  a:hover { border-bottom-color: var(--accent); }
+  a:focus-visible, button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+
+  code {
+    background: var(--code-bg);
+    padding: .12em .42em;
+    border-radius: 5px;
+    font-size: .88em;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .75rem;
+    margin: 1rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .legend li {
+    background: var(--bg-soft);
+    border: 1px solid var(--border);
+    padding: .5rem .85rem;
+    border-radius: 999px;
+    font-size: .92rem;
+    color: var(--fg-muted);
+  }
+  .legend strong { color: var(--fg); margin-right: .25rem; }
+
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    box-shadow: var(--shadow);
+    margin: 1rem 0;
+  }
+
+  .url-row {
+    display: flex;
+    align-items: stretch;
+    gap: .5rem;
+    flex-wrap: wrap;
+  }
+  .url {
+    flex: 1 1 auto;
+    min-width: 0;
+    word-break: break-all;
+    padding: .85rem 1rem;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: .9rem;
+    color: var(--fg);
+    user-select: all;
+  }
+  button.copy {
+    flex: 0 0 auto;
+    background: var(--accent);
+    color: var(--accent-fg);
+    border: 0;
+    border-radius: 8px;
+    padding: 0 1.1rem;
+    font: inherit;
+    font-weight: 600;
+    font-size: .9rem;
+    cursor: pointer;
+    transition: transform .08s ease, filter .15s ease;
+    min-height: 44px;
+  }
+  @media (max-width: 460px) {
+    button.copy { flex-basis: 100%; }
+  }
+  button.copy:hover { filter: brightness(1.08); }
+  button.copy:active { transform: translateY(1px); }
+  button.copy[data-copied="1"] { background: #2f9e6c; color: #fff; }
+
+  .instructions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: .75rem;
+    margin-top: 1rem;
+  }
+  @media (min-width: 520px) {
+    .instructions { grid-template-columns: 1fr 1fr; }
+  }
+  .instructions div {
+    padding: .85rem 1rem;
+    background: var(--bg-soft);
+    border-radius: 8px;
+    font-size: .92rem;
+    color: var(--fg-muted);
+  }
+  .instructions strong { color: var(--fg); display: block; margin-bottom: .15rem; }
+
+  footer {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    font-size: .88rem;
+    color: var(--fg-muted);
+  }
 </style>
 </head>
 <body>
-<h1>Coptic Fasts &amp; Feasts</h1>
-<p>An auto-updating Coptic Orthodox liturgical calendar with every event labeled <code>FAST</code> or <code>FEAST</code>, so a glance at the title tells you whether today is a fasting day.</p>
-
-<p class="legend">
-  <span>🍃 <code>FAST</code> — vegan abstinence period</span>
-  <span>✨ <code>FEAST</code> — celebration / fast suspended</span>
-</p>
+<header>
+  <h1>Coptic Fasts &amp; Feasts</h1>
+  <p class="tagline">An auto-updating Coptic Orthodox liturgical calendar. Every event is labeled <code>FAST</code> or <code>FEAST</code>, so a glance tells you whether today is a fasting day.</p>
+  <ul class="legend">
+    <li>🍃 <strong>FAST</strong> vegan abstinence period</li>
+    <li>✨ <strong>FEAST</strong> celebration · fast suspended</li>
+  </ul>
+</header>
 
 <h2>Subscribe</h2>
-<p>Add this URL to Google Calendar, Apple Calendar, or any iCal-compatible app:</p>
-<code class="url">https://coptic.petertadrous.com/coptic.ics</code>
-
-<p><strong>Google Calendar:</strong> Settings → Add calendar → From URL → paste above.<br>
-<strong>Apple Calendar:</strong> File → New Calendar Subscription → paste above.</p>
+<div class="card">
+  <p style="margin-top:0">Add this URL to Google Calendar, Apple Calendar, or any iCal-compatible app:</p>
+  <div class="url-row">
+    <span class="url" id="ics-url">https://coptic.petertadrous.com/coptic.ics</span>
+    <button class="copy" type="button" aria-label="Copy calendar URL" aria-live="polite">Copy</button>
+  </div>
+  <div class="instructions">
+    <div><strong>Google Calendar</strong>Settings → Add calendar → From URL → paste.</div>
+    <div><strong>Apple Calendar</strong>File → New Calendar Subscription → paste.</div>
+  </div>
+</div>
 
 <h2>How it works</h2>
 <p>Every Sunday, GitHub Actions fetches the upstream calendar published by the
 <a href="https://deacons.suscopts.org/calendar/">Society of St. Stephen Coptic Orthodox Deacons</a>
 (valid through 2100), rewrites event titles with FAST/FEAST prefixes, and expands
-single-day "...Begins" markers into full multi-day fast periods. Set once, runs forever.</p>
+single-day “…Begins” markers into full multi-day fast periods. Set once, runs forever.</p>
 
-<p>Source: <a href="https://github.com/petertadrous/coptic-calendar">github.com/petertadrous/coptic-calendar</a></p>
+<footer>
+  Source: <a href="https://github.com/petertadrous/coptic-calendar">github.com/petertadrous/coptic-calendar</a>
+</footer>
+
+<script>
+  (() => {
+    const btn = document.querySelector('button.copy');
+    const url = document.getElementById('ics-url').textContent.trim();
+    btn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(url);
+      } catch {
+        const r = document.createRange();
+        r.selectNodeContents(document.getElementById('ics-url'));
+        const sel = window.getSelection();
+        sel.removeAllRanges(); sel.addRange(r);
+        document.execCommand('copy');
+        sel.removeAllRanges();
+      }
+      const orig = btn.textContent;
+      btn.textContent = 'Copied';
+      btn.dataset.copied = '1';
+      setTimeout(() => { btn.textContent = orig; delete btn.dataset.copied; }, 1600);
+    });
+  })();
+</script>
 </body>
 </html>
